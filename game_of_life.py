@@ -6,21 +6,27 @@ Created on Tue Apr 27 12:00:49 2021
 @author: AKolcun
 """
 
+#------Imports-----#
 import numpy as np
 import tkinter as tk
 import functools as func
 from tkmacosx import Button as Button #tk toolset won't change bg on MacOSX
 tk.Button = Button
+#-----Imports------#
 
+#------Initialization------#
 grid_size = 10
 nodes = {}
 for x in range(grid_size):
     for y in range(grid_size):
-        nodes[x,y] = None
-        
+        nodes[x,y] = None        
 board = np.zeros((grid_size,grid_size))
+#------Initialization------#
 
-        
+#NOTE- internal_board value of 0 = grey
+#internal_board value of 1 = blue
+
+#------Function Setup------#        
 def live_or_die (cell_value, neighbor_sum):
     #As defined by rules of Game of Life
     if cell_value == 1 and 2 <= neighbor_sum <=3:
@@ -70,6 +76,17 @@ def read_player_input(list_of_buttons):
     
     board = board_state
 
+def update_game_board(array): #Needs tested
+    #Reads internal board state, translates to external board
+    global button_list
+    
+    for button in button_list:
+        index = button['text']
+        if board[index] == 0:
+            button['bg'] = 'grey'
+        else:
+            button['bg'] = 'blue'
+#------Function Setup------#
     
 root = tk.Tk()
 
@@ -84,7 +101,8 @@ for x in range(grid_size):
         #rather than a string
         loc['command'] = func.partial(cell_click, loc)
         button_list.append(loc)
-        
+
+#Sets up game board, and updates cells with starting color by reading state from the board       
 for cell in button_list:
     cell.grid(row=cell['text'][0], column=cell['text'][1])
     if board[cell['text']] == 0:
@@ -92,6 +110,7 @@ for cell in button_list:
     else:
         cell['bg'] = 'blue'
 
+#Play button setup. This starts the simulation
 play = tk.Button(root, text='Play', command=func.partial(read_player_input, button_list))
 play.grid(row=grid_size+1, column=grid_size+1)
 
