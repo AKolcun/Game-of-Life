@@ -10,17 +10,18 @@ Created on Tue Apr 27 12:00:49 2021
 import numpy as np
 import tkinter as tk
 import functools as func
+import time
 from tkmacosx import Button as Button #tk toolset won't change bg on MacOSX
 tk.Button = Button
 #-----Imports------#
 
 #------Initialization------#
-grid_size = 10
+grid_size = 30
 nodes = {}
 for x in range(grid_size):
     for y in range(grid_size):
         nodes[x,y] = None        
-board = np.zeros((grid_size,grid_size))
+board = np.zeros((grid_size,grid_size), dtype=int)
 #------Initialization------#
 
 #NOTE- internal_board value of 0 = grey
@@ -39,7 +40,8 @@ def live_or_die (cell_value, neighbor_sum):
     return new_value 
 
        
-def find_next_gen (array): 
+def find_next_gen (array):
+    global board
     next_gen = np.zeros((grid_size, grid_size), dtype=int) #To hold results for simultaneous update
 
     for x in range(grid_size):
@@ -48,10 +50,9 @@ def find_next_gen (array):
                          (x+1, y+1), (x-1, y-1), (x-1, y+1)]
             
             neighbor_sum = sum([array[cell] for cell in neighbors if cell in nodes])
-            
             next_gen[(x,y)] = live_or_die(array[(x,y)], neighbor_sum)
-            
-    return(next_gen)
+        
+    board = next_gen
 
 
 def cell_click(cell):
@@ -75,17 +76,30 @@ def read_player_input(list_of_buttons):
             board_state[index] = 1
     
     board = board_state
-
-def update_game_board(array): #Needs tested
+   
+    
+def update_game_board(array):
     #Reads internal board state, translates to external board
     global button_list
     
     for button in button_list:
         index = button['text']
-        if board[index] == 0:
+        if array[index] == 0: #board
             button['bg'] = 'grey'
         else:
             button['bg'] = 'blue'
+
+def execute_game_loop(array):
+#Runs one cycle of read, find next gen, and update
+    read_player_input(button_list)
+        
+    find_next_gen(board)
+    update_game_board(board)
+        
+def step():
+    
+    find_next_gen(board)
+    update_game_board(board)            
 #------Function Setup------#
     
 root = tk.Tk()
@@ -111,8 +125,13 @@ for cell in button_list:
         cell['bg'] = 'blue'
 
 #Play button setup. This starts the simulation
-play = tk.Button(root, text='Play', command=func.partial(read_player_input, button_list))
+play = tk.Button(root, text='Play', command=lambda: execute_game_loop(board))
 play.grid(row=grid_size+1, column=grid_size+1)
 
+next_step = tk.Button(root, text='Step', command=lambda: step)
+next_step.grid(row=grid_size+1,column=grid_size+2)
+
+print_board  = tk.Button(root, text='Board State', command=lambda: print(board))
+print_board.grid(row=grid_size+1, column=grid_size+3)
 root.mainloop()
 

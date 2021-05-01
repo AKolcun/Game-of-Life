@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Apr 30 13:49:48 2021
+
+@author: AKolcun
+"""
+
+#------Imports-----#
+import numpy as np
+import tkinter as tk
+import functools as func
+import time
+from tkmacosx import Button as Button #tk toolset won't change bg on MacOSX
+tk.Button = Button
+#-----Imports------#
+
+class game_of_life:
+    
+    def __init__(self, n):
+        
+        #Initialize internal board and node list
+        self.n = n
+        self.nodes = {}
+        for x in range(n):
+            for y in range(n):
+                self.nodes[x,y] = None
+                
+        self.internal_board = np.zeros((n,n), dtype=int)
+        
+        #Next, initialize external board, via list of buttons
+        self.root = tk.Tk()
+        self.external_board = []
+        for x in range(self.n):
+            for y in range(self.n):
+                loc = '{}{}'.format(x,y)
+                loc = tk.Button(self.root, bg='blue', borderless=1,
+                        width=25, height=25, text=(x,y), fg='', activeforeground='')
+                #command must be changed after object creation, to be able to pass in object 'loc'
+                #rather than a string
+                loc['command'] = func.partial(self.cell_click, loc)
+                self.external_board.append(loc)
+        
+        #External board positioning in the GUI
+        for cell in self.external_board:
+            cell.grid(row=cell['text'][0], column=cell['text'][1])
+        
+        #Sync up internal & external
+        self.update_external()
+        
+        play = tk.Button(self.root, text='Play', command=self.execute_game_loop)
+        
+        play.grid(row=self.n+1, column=self.n+1)
+        
+        self.root.mainloop()
+    
+            
+    def live_or_die (self, cell_value, neighbor_sum):
+        #As defined by rules of Game of Life
+        if cell_value == 1 and 2 <= neighbor_sum <=3:
+            new_value = 1
+        elif cell_value == 0 and neighbor_sum == 3:
+            new_value = 1
+        else:
+            new_value = 0
+            
+        return new_value    
+        
+           
+    def find_next_gen (self):
+        
+        next_gen = np.zeros((self.n, self.n), dtype=int) #To hold results for simultaneous update
+
+        for x in range(self.n):
+            for y in range(self.n):
+                neighbors = [(x, y+1), (x,y-1), (x+1, y), (x-1,y), (x+1, y-1),
+                             (x+1, y+1), (x-1, y-1), (x-1, y+1)]
+            
+                neighbor_sum = sum([self.internal_board[cell] for cell in neighbors if cell in self.nodes])
+                next_gen[(x,y)] = self.live_or_die(self.internal_board[(x,y)], neighbor_sum)
+        
+        self.internal_board = next_gen
+    
+    
+    def cell_click(self, cell):
+        #To be passed to grid cells, toggling on/off state
+        if cell['bg'] == 'grey':
+            cell.configure(bg='blue')
+        else:
+            cell.configure(bg='grey')
+        
+        
+    def update_external(self):
+        #Intended read state of internal board and translate to external board
+        #Remember that grid coords are stored in text field of button as a tuple
+        for cell in self.external_board:
+            if self.internal_board[(cell['text'])] == 0:
+                cell['bg'] = 'grey'
+            else:
+                cell['bg'] = 'blue'
+    
+        
+    def execute_game_loop(self):
+        #Runs one cycle of read, find next gen, and update
+        self.read_player_input()
+        self.find_next_gen()
+        self.update_external()
+        self.root.after(2000, self.execute_game_loop)
+
+    
+    
+    def read_player_input(self):
+        #Reads beginning state of board
+    
+        board_read = np.zeros((self.n, self.n), dtype=int)
+        for cell in self.external_board:
+            index = cell['text']
+            if cell['bg'] == 'grey':
+                board_read[index] = 0
+            else:
+                board_read[index] = 1
+        
+        self.internal_board = board_read
+
+    
+    
+def tests():
+    grid = 10
+    
+    #Next command will launch game board.
+    #If functioning properly, board will be grey, rather than initially assigned blue
+    check = game_of_life(grid)
+    
+    #---board creation check---#
+    node_check = {}
+    for x in range (grid):
+        for y in range (grid):
+            node_check[(x,y)] = None
+    
+    for x in node_check:
+        assert x in check.nodes
+        
+    assert check.internal_board.sum() == 0 #Only passes if no modifications made to board
+    #Use that behavior to verify external board is passed to internal board properly
+    assert len(check.internal_board) == grid
+    
+    
+    #---board creation check---#
+    
+    #---live or die check---#
+    assert check.live_or_die(1,2) == 1
+    assert check.live_or_die(0,3) == 1
+    assert check.live_or_die(1,1) == 0
+    assert check.live_or_die(0,2) == 0
+    #-----------------------#
+    
+    #---find next gen check---#
+    check.internal_board = np.ones((grid, grid), dtype=int)
+    check.find_next_gen()
+    assert check.internal_board.sum() == 4
+    #---find next gen check---#
+    
+    print('All passed')
