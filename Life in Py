@@ -10,7 +10,6 @@ Created on Fri Apr 30 13:49:48 2021
 import numpy as np
 import tkinter as tk
 import functools as func
-import time
 from tkmacosx import Button as Button #tk toolset won't change bg on MacOSX
 tk.Button = Button
 #-----Imports------#
@@ -20,6 +19,7 @@ class game_of_life:
     def __init__(self, n):
         
         #Initialize internal board and node list
+        self.running = 0
         self.n = n
         self.nodes = {}
         for x in range(n):
@@ -48,9 +48,11 @@ class game_of_life:
         #Sync up internal & external
         self.update_external()
         
-        play = tk.Button(self.root, text='Play', command=self.execute_game_loop)
-        
-        play.grid(row=self.n+1, column=self.n+1)
+        self.play = tk.Button(self.root, text='Play', command=self.start_game)
+        self.play.grid(row=0, column=self.n+1)
+
+        self.pause = tk.Button(self.root, text='Pause', state ='disabled', command=self.pause_game)
+        self.pause.grid(row=1, column=self.n+1)
         
         self.root.mainloop()
     
@@ -100,13 +102,15 @@ class game_of_life:
                 cell['bg'] = 'blue'
     
         
-    def execute_game_loop(self):
+    def start_game(self):
         #Runs one cycle of read, find next gen, and update
+        self.disable_game_board()
+        self.play['state'] = 'disabled'
         self.read_player_input()
-        self.find_next_gen()
-        self.update_external()
-        self.root.after(2000, self.execute_game_loop)
-
+        
+        self.running = 1
+        self.game_loop()
+        
     
     
     def read_player_input(self):
@@ -122,10 +126,40 @@ class game_of_life:
         
         self.internal_board = board_read
 
+    def disable_game_board(self):
+        #Sets game board bottons to disabled and enables Pause button
+        
+        self.pause['state'] = 'normal'
+        
+        for cell in self.external_board:
+            cell['disabledbackground'] = cell['bg']
+            cell['disabledforeground'] = ''
+            cell['state'] = 'disabled'
     
-    
+    def enable_game_board(self):
+        
+        self.pause['state'] = 'disabled'
+        self.play['state'] = 'normal'
+        for cell in self.external_board:
+            cell['state'] = 'normal'
+        
+    def pause_game(self):
+        
+        self.running = 0
+        self.enable_game_board()
+        self.update_external()
+
+            
+        
+    def game_loop(self):
+        
+        if self.running == 1:
+            self.find_next_gen()
+            self.update_external()
+            self.root.after(10,self.game_loop)
+        
 def tests():
-    grid = 10
+    grid = 30
     
     #Next command will launch game board.
     #If functioning properly, board will be grey, rather than initially assigned blue
