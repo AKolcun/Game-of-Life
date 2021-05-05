@@ -20,39 +20,62 @@ class game_of_life:
         
         #Initialize internal board and node list
         self.running = 0
+        self.sim_speed = 2000
         self.n = n
-        self.nodes = {}
+        self.nodes = []
         for x in range(n):
             for y in range(n):
-                self.nodes[x,y] = None
+                self.nodes.append((x,y))
+        self.nodes = set(self.nodes)
                 
         self.internal_board = np.zeros((n,n), dtype=int)
         
         #Next, initialize external board, via list of buttons
         self.root = tk.Tk()
-        self.external_board = []
+        self.root.title('Life in Py')
+        
+        board_frame = tk.LabelFrame(self.root, bg='white', padx=10, pady=10, labelanchor='n', text='Game Board')
+        controls_frame = tk.LabelFrame(self.root, bg='lavender', padx=10, pady=10, labelanchor='n', text='Controls' )
+        
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0,weight=1)
+        self.root.grid_columnconfigure(1,weight=1)
+        
+        board_frame.grid(row=0, column=0, padx=40, pady=40)
+        controls_frame.grid(row=0, column=1, padx=40, pady=40)
+        
+        
+        self.external_board = {}
         for x in range(self.n):
             for y in range(self.n):
-                loc = '{}{}'.format(x,y)
-                loc = tk.Button(self.root, bg='blue', borderless=1,
-                        width=25, height=25, text=(x,y), fg='', activeforeground='')
+                key = x,y
+                cell = tk.Button(board_frame, bg='white', borderless=1,
+                        width=20, height=20, text=(x,y), fg='', activeforeground='')
                 #command must be changed after object creation, to be able to pass in object 'loc'
                 #rather than a string
-                loc['command'] = func.partial(self.cell_click, loc)
-                self.external_board.append(loc)
+                cell['command'] = func.partial(self.cell_click, cell)
+                self.external_board[key] = cell
+        
+
+        
+        
         
         #External board positioning in the GUI
-        for cell in self.external_board:
-            cell.grid(row=cell['text'][0], column=cell['text'][1])
+        for cell in self.external_board.keys():
+            self.external_board[cell].grid(row=self.external_board[cell]['text'][0], column=self.external_board[cell]['text'][1])
         
-        #Sync up internal & external
-        self.update_external()
-        
-        self.play = tk.Button(self.root, text='Play', command=self.start_game)
-        self.play.grid(row=0, column=self.n+1)
+        self.play = tk.Button(controls_frame, text='Play', command=self.start_game)
+        self.play.grid(row=0)
 
-        self.pause = tk.Button(self.root, text='Pause', state ='disabled', command=self.pause_game)
-        self.pause.grid(row=1, column=self.n+1)
+        self.pause = tk.Button(controls_frame, text='Pause', state ='disabled', command=self.pause_game)
+        self.pause.grid(row=1)
+        
+        self.clear = tk.Button(controls_frame, text='Clear Board', command=self.clear_board)
+        self.clear.grid(row=2)
+        
+        self.speed = tk.Scale(controls_frame, from_=2000, to=1, orient='horizontal', label='Simulation Speed', showvalue=0, length=200, command=self.set_sim_speed)
+        self.speed.set(2000)
+        self.speed.grid(row=3, pady=15)
         
         self.root.mainloop()
     
@@ -72,6 +95,7 @@ class game_of_life:
     def find_next_gen (self):
         
         next_gen = np.zeros((self.n, self.n), dtype=int) #To hold results for simultaneous update
+        change_list = []
 
         for x in range(self.n):
             for y in range(self.n):
@@ -80,89 +104,113 @@ class game_of_life:
             
                 neighbor_sum = sum([self.internal_board[cell] for cell in neighbors if cell in self.nodes])
                 next_gen[(x,y)] = self.live_or_die(self.internal_board[(x,y)], neighbor_sum)
+                if next_gen[(x,y)] != self.internal_board[(x,y)]:
+                    change_list.append((x,y))
         
         self.internal_board = next_gen
+        return change_list
     
     
     def cell_click(self, cell):
         #To be passed to grid cells, toggling on/off state
-        if cell['bg'] == 'grey':
+        if cell['bg'] == 'white':
             cell.configure(bg='blue')
         else:
-            cell.configure(bg='grey')
+            cell.configure(bg='white')
         
         
-    def update_external(self):
+    def update_external(self, list_of_changes):
         #Intended read state of internal board and translate to external board
         #Remember that grid coords are stored in text field of button as a tuple
-        for cell in self.external_board:
-            if self.internal_board[(cell['text'])] == 0:
-                cell['bg'] = 'grey'
+        for cell in list_of_changes:
+            if self.internal_board[cell] == 0:
+                self.external_board[cell]['bg'] = 'white'
             else:
-                cell['bg'] = 'blue'
-    
+                self.external_board[cell]['bg'] = 'blue'
+        
+       
+        #for cell in self.external_board:
+            #if self.internal_board[(cell['text'])] == 0:
+                #cell['bg'] = 'white'
+            #else:
+                #cell['bg'] = 'blue'
+                
         
     def start_game(self):
-        #Runs one cycle of read, find next gen, and update
+        #Deactivates game board and buttons as needed, initiates game loop
         self.disable_game_board()
         self.play['state'] = 'disabled'
+        self.clear['state'] = 'disabled'
         self.read_player_input()
         
         self.running = 1
         self.game_loop()
         
     
-    
     def read_player_input(self):
         #Reads beginning state of board
     
         board_read = np.zeros((self.n, self.n), dtype=int)
-        for cell in self.external_board:
-            index = cell['text']
-            if cell['bg'] == 'grey':
+        for cell in self.external_board.keys():
+            index = self.external_board[cell]['text']
+            if self.external_board[cell]['bg'] == 'white':
                 board_read[index] = 0
             else:
                 board_read[index] = 1
         
         self.internal_board = board_read
 
+
     def disable_game_board(self):
         #Sets game board bottons to disabled and enables Pause button
         
         self.pause['state'] = 'normal'
         
-        for cell in self.external_board:
-            cell['disabledbackground'] = cell['bg']
-            cell['disabledforeground'] = ''
-            cell['state'] = 'disabled'
+        for cell in self.external_board.keys():
+            self.external_board[cell]['disabledbackground'] = self.external_board[cell]['bg']
+            self.external_board[cell]['disabledforeground'] = ''
+            self.external_board[cell]['state'] = 'disabled'
+    
     
     def enable_game_board(self):
         
         self.pause['state'] = 'disabled'
         self.play['state'] = 'normal'
-        for cell in self.external_board:
-            cell['state'] = 'normal'
+        self.clear['state'] = 'normal'
+        for cell in self.external_board.keys():
+            self.external_board[cell]['state'] = 'normal'
+        
         
     def pause_game(self):
         
         self.running = 0
         self.enable_game_board()
-        self.update_external()
-
-            
         
+
+                    
     def game_loop(self):
         
         if self.running == 1:
-            self.find_next_gen()
-            self.update_external()
-            self.root.after(10,self.game_loop)
+            self.update_external(self.find_next_gen())
+            self.root.after(self.sim_speed,self.game_loop)
+     
+        
+    def set_sim_speed(self, value):
+        self.sim_speed = value
+    
+        
+    def clear_board(self):
+        
+        for cell in self.external_board.keys():
+            self.external_board[cell]['bg'] = 'white'
+        self.read_player_input()
+        
         
 def tests():
     grid = 30
     
     #Next command will launch game board.
-    #If functioning properly, board will be grey, rather than initially assigned blue
+    #If functioning properly, board will be white, rather than initially assigned blue
     check = game_of_life(grid)
     
     #---board creation check---#
