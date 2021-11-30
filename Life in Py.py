@@ -26,8 +26,13 @@ class game_of_life:
         #Root and frame creation, to allow for external_board creation
         self.root = tk.Tk()
         self.root.title('Life in Py')
+        self.width = self.root.winfo_screenwidth()
+        self.height = self.root.winfo_screenheight()
+        self.pixel = tk.PhotoImage(width=1, height=1)
+        self.root.geometry(f'{self.width}x{self.height}')
         
-        board_frame = tk.LabelFrame(self.root, bg='white', padx=10, pady=10, labelanchor='n', text='Game Board')
+        
+        board_frame = tk.LabelFrame(self.root, bg='white', labelanchor='n', text='Game Board')
         controls_frame = tk.LabelFrame(self.root, bg='lavender', padx=10, pady=10, labelanchor='n', text='Controls' )
         
         self.external_board = self.create_external_board(n, board_frame)
@@ -46,7 +51,7 @@ class game_of_life:
         self.root.grid_columnconfigure(0,weight=1)
         self.root.grid_columnconfigure(1,weight=1)
         
-        board_frame.grid(row=0, column=0, padx=40, pady=40)
+        board_frame.grid(row=0, column=0)
         controls_frame.grid(row=0, column=1, padx=40, pady=40)
         
         for cell in self.external_board.keys():
@@ -207,13 +212,14 @@ class game_of_life:
 
     def create_external_board(self, n, frame):
         #Generates and returns dict of buttons that will represent visible game board
+        h = self.height * 0.65
         
         external_board = {}
         for x in range(n):
             for y in range(n):
                 key = x,y
-                cell = tk.Button(frame, bg='white',
-                        width=4, height=2,activebackground='gray')
+                cell = tk.Button(frame, bg='white', image = self.pixel, compound='c',
+                        width=(h//n), height=(h//n), activebackground='gray')
                 #command must be changed after object creation, to be able to pass in object 'loc'
                 #rather than a string
                 cell['command'] = func.partial(self.cell_click, cell)
