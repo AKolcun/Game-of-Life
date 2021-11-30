@@ -10,14 +10,11 @@ Created on Fri Apr 30 13:49:48 2021
 import numpy as np
 import tkinter as tk
 import functools as func
-from tkmacosx import Button as Button #tk toolset won't change bg on MacOSX
-tk.Button = Button
 #-----Imports------#
 
 class game_of_life:
     
     def __init__(self, n):
-        
         #Initialize class variables, internal & external boards, and layout
         self.running = 0
         self.sim_speed = 2000
@@ -53,8 +50,8 @@ class game_of_life:
         controls_frame.grid(row=0, column=1, padx=40, pady=40)
         
         for cell in self.external_board.keys():
-            self.external_board[cell].grid(row=self.external_board[cell]['text'][0], 
-                                           column=self.external_board[cell]['text'][1])
+            self.external_board[cell].grid(row=cell[0], 
+                                           column=cell[1])
         
         self.play.grid(row=0)
         self.pause.grid(row=1)
@@ -113,8 +110,10 @@ class game_of_life:
         #Remember that grid coords are stored in text field of button as a tuple
         for cell in list_of_changes:
             if self.internal_board[cell] == 0:
+                self.external_board[cell]['disabledforeground'] = 'white'
                 self.external_board[cell]['bg'] = 'white'
             else:
+                self.external_board[cell]['disabledforeground'] = 'blue'
                 self.external_board[cell]['bg'] = 'blue'
                 
         
@@ -135,11 +134,10 @@ class game_of_life:
     
         board_read = np.zeros((self.n, self.n), dtype=int)
         for cell in self.external_board.keys():
-            index = self.external_board[cell]['text']
             if self.external_board[cell]['bg'] == 'white':
-                board_read[index] = 0
+                board_read[cell] = 0
             else:
-                board_read[index] = 1
+                board_read[cell] = 1
         
         self.internal_board = board_read
 
@@ -150,7 +148,7 @@ class game_of_life:
         self.pause['state'] = 'normal'
         
         for cell in self.external_board.keys():
-            self.external_board[cell]['disabledbackground'] = self.external_board[cell]['bg']
+            self.external_board[cell]['disabledforeground'] = self.external_board[cell]['bg']
             self.external_board[cell]['state'] = 'disabled'
     
     
@@ -214,12 +212,11 @@ class game_of_life:
         for x in range(n):
             for y in range(n):
                 key = x,y
-                cell = tk.Button(frame, bg='white', borderless=1,
-                        width=20, height=20, text=(x,y), fg='', activeforeground='', disabledforeground='')
+                cell = tk.Button(frame, bg='white',
+                        width=4, height=2,activebackground='gray')
                 #command must be changed after object creation, to be able to pass in object 'loc'
                 #rather than a string
                 cell['command'] = func.partial(self.cell_click, cell)
                 external_board[key] = cell
         
         return external_board
-         
